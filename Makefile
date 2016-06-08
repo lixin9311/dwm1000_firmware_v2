@@ -22,7 +22,7 @@ SOURCES = \
 		$(wildcard lib/STM32F10x_StdPeriph_Driver/src/*.c) \
 	  lib/CMSIS/CM3/CoreSupport/core_cm3.c \
 		lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/system_stm32f10x.c \
-		lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/startup_stm32f10x_cl.S
+		lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/startup_stm32f10x_hd.s
 
 HEADERS = \
 	  $(wildcard platform/*.h ) \
