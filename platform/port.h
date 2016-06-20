@@ -14,8 +14,6 @@
 
 #ifndef PORT_H_
 #define PORT_H_
-#include <stdio.h>
-int fputc(int ch, FILE *f);
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,13 +75,13 @@ typedef enum
 #define SPIx_MISO					GPIO_Pin_6
 #define SPIx_MOSI					GPIO_Pin_7
 
-#define DW1000_RSTn					GPIO_Pin_0
-#define DW1000_RSTn_GPIO			GPIOA
+#define DW1000_RSTn					GPIO_Pin_5
+#define DW1000_RSTn_GPIO			GPIOC
 
-#define DECARSTIRQ                  GPIO_Pin_0
-#define DECARSTIRQ_GPIO             GPIOA
+#define DECARSTIRQ                  GPIO_Pin_5
+#define DECARSTIRQ_GPIO             GPIOC
 #define DECARSTIRQ_EXTI             EXTI_Line0
-#define DECARSTIRQ_EXTI_PORT        GPIO_PortSourceGPIOA
+#define DECARSTIRQ_EXTI_PORT        GPIO_PortSourceGPIOC
 #define DECARSTIRQ_EXTI_PIN         GPIO_PinSource0
 #define DECARSTIRQ_EXTI_IRQn        EXTI0_IRQn
 

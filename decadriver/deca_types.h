@@ -38,6 +38,13 @@ typedef unsigned long uint32;
 #endif
 #endif
 
+#ifndef uint64
+#ifndef _DECA_UINT64_
+#define _DECA_UINT64_
+typedef unsigned long long uint64;
+#endif
+#endif
+
 #ifndef int8
 #ifndef _DECA_INT8_
 #define _DECA_INT8_
@@ -59,6 +66,13 @@ typedef signed long int32;
 #endif
 #endif
 
+#ifndef int64
+#ifndef _DECA_INT64_
+#define _DECA_INT64_
+typedef signed long long int64;
+#endif
+#endif
+
 #ifndef NULL
 #define NULL ((void *)0UL)
 #endif
@@ -68,5 +82,3 @@ typedef signed long int32;
 #endif
 
 #endif /* DECA_TYPES_H_ */
-
-

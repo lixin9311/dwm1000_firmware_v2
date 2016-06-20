@@ -121,9 +121,12 @@ int NVIC_Configuration(void)
 	NVIC_InitTypeDef NVIC_InitStructure;
 
 	// Enable GPIO used as DECA IRQ for interrupt
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
 	GPIO_InitStructure.GPIO_Pin = DECAIRQ;
 	GPIO_InitStructure.GPIO_Mode = 	GPIO_Mode_IPD;	//IRQ pin should be Pull Down to prevent unnecessary EXT IRQ while DW1000 goes to sleep mode
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(DECAIRQ_GPIO, &GPIO_InitStructure);
+	GPIO_ResetBits(DECAIRQ_GPIO, DECAIRQ);
 
 	/* Connect EXTI Line to GPIO Pin */
 	GPIO_EXTILineConfig(DECAIRQ_EXTI_PORT, DECAIRQ_EXTI_PIN);
@@ -136,12 +139,12 @@ int NVIC_Configuration(void)
 	EXTI_Init(&EXTI_InitStructure);
 
 	/* Set NVIC Grouping to 16 groups of interrupt without sub-grouping */
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
 	/* Enable and set EXTI Interrupt to the lowest priority */
 	NVIC_InitStructure.NVIC_IRQChannel = DECAIRQ_EXTI_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 15;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = DECAIRQ_EXTI_USEIRQ;
 
 	NVIC_Init(&NVIC_InitStructure);
@@ -803,9 +806,6 @@ void led_on (led_t led)
 	}
 }
 
-#define USART_SUPPORT
-#ifdef USART_SUPPORT
-
 /**
   * @brief  Configures COM port.
   * @param  USART_InitStruct: pointer to a USART_InitTypeDef structure that
@@ -870,27 +870,6 @@ void usartinit(void)
 	USART_Cmd(USART1, ENABLE);
 }
 
-#ifdef __GNUC__
-  /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
-     set to 'Yes') calls __io_putchar() */
-  #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
-#else
-  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
-#endif /* __GNUC__ */
-
-PUTCHAR_PROTOTYPE
-{
-  /* Place your implementation of fputc here */
-  /* e.g. write a character to the USART */
-  USART_SendData(USART1, (uint8_t) ch);
-
-  /* Loop until the end of transmission */
-  while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET)
-  {}
-
-  return ch;
-}
-
 void USART_putc(char c)
 {
 	//while(!(USART2->SR & 0x00000040));
@@ -932,10 +911,6 @@ void printf2(const char *format, ...)
 	va_end(list);
 	return;
 }
-
-
-#endif
-
 
 int is_IRQ_enabled(void)
 {
@@ -1004,9 +979,8 @@ void peripherals_init (void)
 	rcc_init();
 	gpio_init();
 	systick_init();
-	#ifdef USART_SUPPORT
 	usartinit();
-	#endif
 	spi_peripheral_init();
-	lcd_init();
+	// lcd_init();
+	interrupt_init();
 }
