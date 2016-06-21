@@ -33,7 +33,7 @@ HEADERS = \
 		lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/stm32f10x.h \
 		$(wildcard src/*.h)
 
-LINKER_SCRIPT = Linkers/stm32_flash_256k_ram_64k.ld
+LINKER_SCRIPT = Linkers/stm32_flash_256k_ram_48k.ld
 
 INCLUDES += -Iplatform \
 			-Idecadriver \
