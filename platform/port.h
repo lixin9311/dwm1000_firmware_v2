@@ -220,6 +220,7 @@ unsigned long portGetTickCnt(void);
 
 void reset_DW1000(void);
 void setup_DW1000RSTnIRQ(int enable);
+void int_init(void);
 
 #ifdef __cplusplus
 }

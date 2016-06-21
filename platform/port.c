@@ -982,5 +982,9 @@ void peripherals_init (void)
 	usartinit();
 	spi_peripheral_init();
 	// lcd_init();
+	// interrupt_init();
+}
+
+void int_init(void) {
 	interrupt_init();
 }

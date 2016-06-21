@@ -30,48 +30,43 @@ static dwt_config_t config = {
 // beacon 应该是0x40 注意该死的字节序
 static uint8 tx_poll_msg[] = {0x44, 0x88, 0, 0xCA, 0xDE, 0xFF, 0xFF, 0xFF, 0xFF, 0xE0, 0, 0};
 
-int main(void)
-{
-    peripherals_init();
-    printf2("%s\r\n",APP_NAME);
+int main(void) {
+  peripherals_init();
+  printf2("%s\r\n",APP_NAME);
 
-    reset_DW1000();
-    spi_set_rate_low();
-    dwt_initialise(DWT_LOADUCODE);
-    spi_set_rate_high();
+  reset_DW1000();
+  spi_set_rate_low();
+  dwt_initialise(DWT_LOADUCODE);
+  spi_set_rate_high();
 
 
-    dwt_configure(&config);
+  dwt_configure(&config);
+  #ifdef TX
+    printf2("%s\r\n", "role: TX");
+    set_pan(0xDECA);
+    set_mac(0xFFF1);
+  #endif
+  #ifdef RX
+    printf2("%s\r\n", "role: RX");
+    set_pan(0xDECA);
+    set_mac(0xFFF2);
+  #endif
+
+  dwt_setrxantennadelay(RX_ANT_DLY);
+  dwt_settxantennadelay(TX_ANT_DLY);
+  instance_init();
+  dwt_rxenable(0);
+  int_init();
+  while (1)
+  {
     #ifdef TX
-      printf2("%s\r\n", "role: TX");
-      set_pan(0xDECA);
-      set_mac(0xFFF1);
+      set_src(tx_poll_msg);
+      dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0);
+      dwt_writetxfctrl(sizeof(tx_poll_msg), 0);
+      set_status(STATUS_POLL);
+      dwt_forcetrxoff();
+      dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+      deca_sleep(RNG_DELAY_MS);
     #endif
-    #ifdef RX
-      printf2("%s\r\n", "role: RX");
-      set_pan(0xDECA);
-      set_mac(0xFFF2);
-    #endif
-
-    dwt_setrxantennadelay(RX_ANT_DLY);
-    dwt_settxantennadelay(TX_ANT_DLY);
-
-    dwt_setrxaftertxdelay(0);
-    dwt_setrxtimeout(350);
-    instance_init();
-    while (1)
-    {
-      #ifdef TX
-        set_src(tx_poll_msg);
-        dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0);
-        dwt_writetxfctrl(sizeof(tx_poll_msg), 0);
-        set_status(STATUS_POLL);
-        dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
-        {
-        /* Clear RX error events in the DW1000 status register. */
-        dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
-        }
-        deca_sleep(RNG_DELAY_MS);
-      #endif
-    }
+  }
 }
