@@ -58,6 +58,26 @@ void TIM4_IRQHandler(void) {
 	}
 }
 
+void TIM2_IRQHandler(void) {
+	if(TIM_GetITStatus(TIM2 , TIM_IT_Update) != RESET) {
+		TIM_ClearITPendingBit(TIM2 , TIM_FLAG_Update);
+    beacon();
+	}
+}
+
+void enable_auto_beacon(void) {
+  TIM_ClearFlag(TIM2, TIM_FLAG_Update);
+  TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
+  TIM_Cmd(TIM2, ENABLE);
+}
+
+void disable_auto_beacon(void) {
+  TIM_ClearITPendingBit(TIM2 , TIM_FLAG_Update);
+  TIM_ITConfig(TIM2, TIM_IT_Update, DISABLE);
+  TIM_SetCounter(TIM2, 0x0000);
+  TIM_Cmd(TIM2, DISABLE);
+}
+
 void USART1_IRQHandler(void) {
 	if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
 		if (usart_status == 0) {

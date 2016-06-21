@@ -30,6 +30,8 @@
  * Tick timer interrupt handler to replace the default one.
  */
 void SysTick_Handler(void);
+void enable_auto_beacon(void);
+void disable_auto_beacon(void);
 
 #ifdef __cplusplus
 }

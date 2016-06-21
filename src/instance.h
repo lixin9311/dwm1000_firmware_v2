@@ -45,6 +45,7 @@ void calculate_distance(uint8 *target);
 void response_poll(uint8 *target);
 void usart_handle(void);
 void main_loop(void);
+void beacon(void);
 
 #ifdef __cplusplus
 }

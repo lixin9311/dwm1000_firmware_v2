@@ -66,6 +66,15 @@ int check_addr(uint8 *buf) {
   return 1;
 }
 
+void beacon(void) {
+  set_src(tx_poll_msg);
+  dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0);
+  dwt_writetxfctrl(sizeof(tx_poll_msg), 0);
+  set_status(STATUS_POLL);
+  dwt_forcetrxoff();
+  dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+}
+
 void calculate_distance(uint8 *target) {
   uint32 poll_rx_ts, resp_tx_ts;
   uint64 resp_rx_ts = dwt_readrxtimestamplo32();
@@ -188,15 +197,6 @@ void resp_msg_set_ts(uint8 *ts_field, const uint64 ts) {
 
 void main_loop(void) {
   while (1) {
-      if (auto_beacon == 1) {
-        set_src(tx_poll_msg);
-        dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0);
-        dwt_writetxfctrl(sizeof(tx_poll_msg), 0);
-        set_status(STATUS_POLL);
-        dwt_forcetrxoff();
-        dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
-      }
-      deca_sleep(RNG_DELAY_MS);
   }
 }
 
@@ -228,7 +228,11 @@ void usart_handle(void) {
         break;
       case USART_RST:
       case USART_AUTOBEACON:
-        auto_beacon = usart_rx_buffer[2];
+        if (usart_rx_buffer[2] == 1) {
+          enable_auto_beacon();
+        } else {
+          disable_auto_beacon();
+        }
         break;
       case USART_LOG:
       case 'a':
