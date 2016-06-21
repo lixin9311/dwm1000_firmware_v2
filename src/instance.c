@@ -1,5 +1,4 @@
 #include <string.h>
-#include <stdio.h>
 
 #include "instance.h"
 #include "deca_device_api.h"
@@ -55,31 +54,35 @@ int check_addr(uint8 *buf) {
 }
 
 void calculate_distance() {
-  char dist_str[20];
+  double distance;
   uint32 poll_rx_ts, resp_tx_ts;
   uint64 resp_rx_ts = dwt_readrxtimestamplo32();
   resp_msg_get_ts(&rx_buffer[RESP_MSG_POLL_RX_TS_IDX], &poll_rx_ts);
   resp_msg_get_ts(&rx_buffer[RESP_MSG_RESP_TX_TS_IDX], &resp_tx_ts);
   int32 rtd_init = resp_rx_ts - poll_tx_ts;
   int32 rtd_resp = resp_tx_ts - poll_rx_ts;
-  double tof = ((rtd_init - rtd_resp) / 2.0) * DWT_TIME_UNITS;
-  double distance = tof * SPEED_OF_LIGHT;
-  sprintf(dist_str, "DIST: %3.2f m", distance);
-  printf2("%s\r\n", dist_str);
+  int tmp = (rtd_init - rtd_resp);
+  printf2("DIST(%02x%02x): %d\r\n", rx_buffer[6], rx_buffer[5], tmp);
 }
 
 void response_poll() {
   uint8 tx_buffer[] = {0x45, 0x88, 0, 0xCA, 0xDE, 'Y', 'U', 'K', 'I', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  set_src(tx_buffer);
+  dwt_forcetrxoff();
   uint64 poll_rx_ts = get_rx_timestamp_u64();
   uint32 resp_tx_time = (poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
   dwt_setdelayedtrxtime(resp_tx_time);
   uint64 resp_tx_ts = (((uint64)(resp_tx_time & 0xFFFFFFFE)) << 8) + TX_ANT_DLY;
   resp_msg_set_ts(&tx_buffer[RESP_MSG_POLL_RX_TS_IDX], poll_rx_ts);
   resp_msg_set_ts(&tx_buffer[RESP_MSG_RESP_TX_TS_IDX], resp_tx_ts);
-  set_src(tx_buffer);
   dwt_writetxdata(sizeof(tx_buffer), tx_buffer, 0);
   dwt_writetxfctrl(sizeof(tx_buffer), 0);
-  dwt_starttx(DWT_START_TX_DELAYED);
+  int r = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);
+  if (r !=  DWT_SUCCESS) {
+	  dwt_rxenable(0);
+  } else {
+	  // printf2("r\r\n");
+  }
 }
 
 void instance_rxcallback(const dwt_callback_data_t *rxd) {
@@ -130,7 +133,7 @@ void instance_txcallback(const dwt_callback_data_t *txd) {
 
 void instance_init() {
   dwt_setcallbacks(instance_txcallback, instance_rxcallback);
-  dwt_setinterrupt(DWT_INT_TFRS | DWT_INT_RFCG | (DWT_INT_ARFE | DWT_INT_RFSL | DWT_INT_SFDT | DWT_INT_RPHE | DWT_INT_RFCE | DWT_INT_RFTO /*| DWT_INT_RXPTO*/), 1);
+  dwt_setinterrupt(DWT_INT_TFRS | DWT_INT_RFCG /*| (DWT_INT_ARFE | DWT_INT_RFSL | DWT_INT_SFDT | DWT_INT_RPHE | DWT_INT_RFCE | DWT_INT_RFTO | DWT_INT_RXPTO)*/, 1);
 }
 
 uint64 get_rx_timestamp_u64(void) {
