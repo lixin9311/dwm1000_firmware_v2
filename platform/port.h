@@ -20,7 +20,7 @@ extern "C" {
 #endif
 
 #include "stm32f10x.h"
-
+#include "deca_types.h"
 /* Define our wanted value of CLOCKS_PER_SEC so that we have a millisecond
  * tick timer. */
 #undef CLOCKS_PER_SEC
@@ -222,7 +222,7 @@ void TIM4_init(void);
 void reset_DW1000(void);
 void setup_DW1000RSTnIRQ(int enable);
 void int_init(void);
-void send_to_host(char type, char len, char *data);
+void send_to_host(char type, char len, uint8 *data);
 
 #ifdef __cplusplus
 }

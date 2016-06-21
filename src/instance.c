@@ -73,10 +73,15 @@ void calculate_distance(uint8 *target) {
   resp_msg_get_ts(&rx_buffer[RESP_MSG_RESP_TX_TS_IDX], &resp_tx_ts);
   int32 rtd_init = resp_rx_ts - poll_tx_ts;
   int32 rtd_resp = resp_tx_ts - poll_rx_ts;
-  int tmp = (rtd_init - rtd_resp);
-  // TODO
-  // send_to_host(USART_BEACON);
-  printf2("DIST(%02x%02x): %d\r\n", target[0], rx_buffer[1], tmp);
+  int32 tmp = (rtd_init - rtd_resp);
+  usart_tx_buffer[0] = target[0];
+  usart_tx_buffer[1] = target[1];
+  usart_tx_buffer[2] = ((tmp)&0xff);
+  usart_tx_buffer[3] = ((tmp>>8)&0xff);
+  usart_tx_buffer[4] = ((tmp>>16)&0xff);
+  usart_tx_buffer[5] = ((tmp>>24)&0xff);
+  send_to_host(USART_BEACON, 6, usart_tx_buffer);
+  // printf2("DIST(%02x%02x): %d\r\n", target[0], rx_buffer[1], tmp);
   // 因为内存和浮点数问题，这个数字就不在单片机上处理了
   // 距离计算方法: tmp / 2 * 1.0 / 499.2e6 / 128.0 * 299702547
 }

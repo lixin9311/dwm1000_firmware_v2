@@ -14,6 +14,7 @@
 #include "lcd.h"
 #include "port.h"
 #include "stm32f10x_rcc.h"
+#include "deca_types.h"
 
 #define rcc_init(x)					RCC_Configuration(x)
 #define systick_init(x)				SysTick_Configuration(x)
@@ -895,7 +896,7 @@ void USART_putc_slip(char c)
 }
 
 // SLIP like
-void send_to_host(char type, char len, char *data) {
+void send_to_host(char type, char len, uint8 *data) {
 	int i;
 	USART_putc_slip(type);
 	USART_putc_slip(len);
