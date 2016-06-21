@@ -223,8 +223,8 @@ void usart_handle(void) {
         dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
         break;
       case USART_SETADDR:
-        set_pan((usart_rx_buffer[2]<<8) + usart_rx_buffer[3]);
-        set_mac((usart_rx_buffer[4]<<8) + usart_rx_buffer[5]);
+        set_pan((usart_rx_buffer[3]<<8) + usart_rx_buffer[2]);
+        set_mac((usart_rx_buffer[5]<<8) + usart_rx_buffer[4]);
         break;
       case USART_RST:
       case USART_AUTOBEACON:
