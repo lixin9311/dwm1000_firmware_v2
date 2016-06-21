@@ -63,6 +63,8 @@ void calculate_distance() {
   int32 rtd_resp = resp_tx_ts - poll_rx_ts;
   int tmp = (rtd_init - rtd_resp);
   printf2("DIST(%02x%02x): %d\r\n", rx_buffer[6], rx_buffer[5], tmp);
+  // 因为内存和浮点数问题，这个数字就不在单片机上处理了
+  // 距离计算方法: tmp / 2 * 1.0 / 499.2e6 / 128.0 * 299702547
 }
 
 void response_poll() {
