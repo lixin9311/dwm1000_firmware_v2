@@ -60,7 +60,7 @@ void TIM4_IRQHandler(void) {
 
 void TIM2_IRQHandler(void) {
 	if(TIM_GetITStatus(TIM2 , TIM_IT_Update) != RESET) {
-		TIM_ClearITPendingBit(TIM2 , TIM_FLAG_Update);
+    TIM_ClearITPendingBit(TIM2 , TIM_FLAG_Update);
     beacon();
 	}
 }
