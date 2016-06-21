@@ -52,59 +52,87 @@ make clean
 
 为了不与Glibc冲突，使用printf2进行串口输出。
 
-## 与上位机通信的数据包格式
-还没实现
+## 与下位机通讯
 
 Baudrate 115200
 
+基础报文如下，PC到STM32无需转义，驱动层注意加锁，以及每次写入完毕后保持一个10ms的延迟。
+STM32到PC端是经过一个类SLIP转义的。
 ~~~
-CMD/LOC
-+-------+---------------+---------------+----------------+----------------+
-| Bytes |       0       |       1       |     PARAMS     |       N        |
-+-------+---------------+---------------+----------------+----------------+
-|  def  |      TYPE     |    SUBTYPE    |                |     CRC8       |
-+-------+---------------+---------------+----------------+----------------+
+类SLIP转义:
+0xDB为转义标志, '\n'为结束标志
+0xDB被转义成0xDB, 0xDC
+'\n'被转义成0xDB, 0xDD
+
 
 MSG
-+-------+---------------+---------------+---------------------------+
-| Bytes |       0       |       1       |           2 - 5           |
-+-------+---------------+---------------+---------------------------+
-|  def  |      TYPE     |      LEN      |        SEQ (IN BYTE)      |
-+-------+---------------+---------------+---------------------------+
-+-------+----------------------+----------------------+
-| Bytes |        6 - 13        |       14 - 21        |
-+-------+----------------------+----------------------+
-|  def  |      SRC ADDRESS     |     DST ADDRESS      |
-+-------+----------------------+----------------------+
-+-------+---------------------+---------------+----------------+
-| Bytes |     22 -  85        |      86       |       87       |
-+-------+---------------------+---------------+----------------+
-|  def  |    Payload max(64)  |     CRC16     |      CRC16     |
-+-------+---------------------+---------------+----------------+
++-------+--------+--------+-----------------+
+| Bytes |    0   |    1   |        N        |
++-------+--------+--------+-----------------+
+|  def  |  TYPE  |  LEN   | Payload(126MAX) |
++-------+--------+--------+-----------------+
 
-MSG TOTAL LENGTH MAX 88 (0 - 87)
- 1. Frame Type
-        //00 - RES
-        01 - Message
-                Host to Controller(H2C)
-                        The payload carries the raw message to sent, see raw_write().
-                Controller to Host(C2H)
-                        The payload carries the raw message received, see raw_read().
-        10 - Distance / Location poll Trigger the Location Service.
-             On
-             Off
-             Calibration
+消息最大长度为128 (126 + 2) 字节
+  1. 消息类型 Type
+    0x00: 消息
+    0x01: 测距以及Beacon
+    0x02: 设置MAC地址以及PANID
+    0x03: RESET
+    0x04: Auto Beacon
+    0x05: Log Msg
+  2. Packet Length
+    Payload长度，以无符号8位整型(unsigned char)表示
+  3. Payload
+    不同消息参照不同的内容
 
-        11 - Command
-             Reboot.
-             Write Reg.
-             H2C - Read Reg.
-             C2H - Return the Read Reg Result.
-             Set log level?
- 2. Packet Length
-        Total length of all Payloads in a sequence in Unsigned 8 bits Integer.
- 3. CRC
-        CRC16 of the frame.
+0x00 消息
+
+Payload的基础格式参照`IEEE 802.15.4a`标准。
+我们尽量采用短地址以节约资源。
+Frame Control: 一定要采用 0x41, 0x88
+Sequence Num: Place Holder
+Dest PANID, Dest Addr, Src Addr: 注意字节序，如果目标地址设置成了"KI" 则要填 "IK"
+FCS: 自动添加，但是需要留位置，两个0x00就行。
+原则上来说，这些都是在驱动层来处理的，app层无需关心。
++---------------+--------------+------------+-----------+-----------+----------+---------+
+| Frame Control | Sequence Num | Dest PANID | Dest Addr | Src Addr  |  Payload |   FCS   |
++---------------+--------------+------------+-----------+-----------+----------+---------+
+| 2 Bytes       | 1 Byte       | 2 Bytes    | 2 Bytes   | 2 Bytes   | Var Bytes| 2 Bytes |
++---------------+--------------+------------+-----------+-----------+----------+---------+
+| 0x41, 0x88    | 0x00         | 0xDECA     | "YU"      | "KI"      | "Hello!" |   Auto  |
++---------------+--------------+------------+-----------+-----------+----------+---------+
+
+0x01 测距以及Beacon
+
+不需要填len
+Payload为空则为广播。
+若Payload为目标PANID以及MAC地址，则单播。(尚未实现)
+
+0x02 设置MAC地址以及PANID
+
+Payload 格式:
++------------+-----------+
+|    PANID   |   Addr    |
++------------+-----------+
+|  2 Bytes   |  2 Bytes  |
++------------+-----------+
+| 0xCA, 0xDE | 'U', 'Y'  |
++------------+-----------+
+
+0x03 RESET:
+尚未实现
+
+0x04 Auto Beacon:
+
+Payload 格式:
++------------+
+|   Enable   |
++------------+
+|  1 Bytes   |
++------------+
+|0x00 or 0x01|
++------------+
+
 ~~~
 
 ## 无线通信数据包格式

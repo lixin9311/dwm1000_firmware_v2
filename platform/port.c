@@ -881,23 +881,37 @@ void USART_putc(char c)
 	while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET)	;
 }
 
+void USART_putc_slip(char c)
+{
+	if (c == 0xDB) {
+		USART_putc(0xDB);
+		USART_putc(0xDC);
+	} else if (c == '\n') {
+		USART_putc(0xDB);
+		USART_putc(0xDD);
+	} else {
+		USART_putc(c);
+	}
+}
+
 // SLIP like
+void send_to_host(char type, char len, char *data) {
+	int i;
+	USART_putc_slip(type);
+	USART_putc_slip(len);
+	for (i=0; i < len; i++) {
+			USART_putc_slip(data[i]);
+	}
+	USART_putc('\n');
+}
+
 void USART_puts(const char *s)
 {
 	int i;
 	for(i=0; s[i]!=0; i++)
 	{
-		if (s[i] == 0xDB) {
-			USART_putc(0xDB);
-			USART_putc(0xDC);
-		} else if (s[i] == '\n') {
-			USART_putc(0xDB);
-			USART_putc(0xDD);
-		} else {
-			USART_putc(s[i]);
-		}
+		USART_putc(s[i]);
 	}
-	USART_putc('\n');
 }
 
 #include <stdio.h>

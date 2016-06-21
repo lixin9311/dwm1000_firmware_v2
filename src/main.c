@@ -1,17 +1,12 @@
 #include <string.h>
 
 #include "deca_device_api.h"
-#include "deca_regs.h"
-#include "deca_types.h"
-#include "deca_sleep.h"
-#include "lcd.h"
 #include "port.h"
 #include "instance.h"
 
 #define TX
 // #define RX
 #define APP_NAME "SS TWR INIT v1.1"
-#define RNG_DELAY_MS 1000
 
 /* Default communication configuration. We use here EVK1000's mode 4. See NOTE 1 below. */
 static dwt_config_t config = {
@@ -26,9 +21,6 @@ static dwt_config_t config = {
     DWT_PHRMODE_STD, /* PHY header mode. */
     (129 + 8 - 8)    /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */
 };
-
-// beacon 应该是0x40 注意该死的字节序
-static uint8 tx_poll_msg[] = {0x44, 0x88, 0, 0xCA, 0xDE, 0xFF, 0xFF, 0xFF, 0xFF, 0xE0, 0, 0};
 
 int main(void) {
   peripherals_init();
@@ -57,16 +49,5 @@ int main(void) {
   instance_init();
   dwt_rxenable(0);
   int_init();
-  while (1)
-  {
-    #ifdef TX
-      set_src(tx_poll_msg);
-      dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0);
-      dwt_writetxfctrl(sizeof(tx_poll_msg), 0);
-      set_status(STATUS_POLL);
-      dwt_forcetrxoff();
-      dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
-      deca_sleep(RNG_DELAY_MS);
-    #endif
-  }
+  main_loop();
 }

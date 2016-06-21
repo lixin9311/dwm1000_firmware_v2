@@ -6,12 +6,19 @@
 #include "deca_types.h"
 #include "port.h"
 #include "stm32f10x_it.h"
+#include "deca_sleep.h"
+
+#define RNG_DELAY_MS 1000
 
 extern uint8 usart_status;
 extern uint8 usart_rx_buffer[USART_BUFFER_LEN];
 extern uint16 usart_index;
+// beacon 应该是0x40 注意该死的字节序
+static uint8 tx_poll_msg[] = {0x44, 0x88, 0, 0xCA, 0xDE, 0xFF, 0xFF, 0xFF, 0xFF, 0xE0, 0, 0};
+
 uint8 usart_tx_buffer[USART_BUFFER_LEN];
 
+uint8 auto_beacon = 0;
 uint8 status = STATUS_IDLE;
 uint8 mac[2];
 uint8 pan[2];
@@ -59,7 +66,7 @@ int check_addr(uint8 *buf) {
   return 1;
 }
 
-void calculate_distance() {
+void calculate_distance(uint8 *target) {
   uint32 poll_rx_ts, resp_tx_ts;
   uint64 resp_rx_ts = dwt_readrxtimestamplo32();
   resp_msg_get_ts(&rx_buffer[RESP_MSG_POLL_RX_TS_IDX], &poll_rx_ts);
@@ -67,14 +74,18 @@ void calculate_distance() {
   int32 rtd_init = resp_rx_ts - poll_tx_ts;
   int32 rtd_resp = resp_tx_ts - poll_rx_ts;
   int tmp = (rtd_init - rtd_resp);
-  printf2("DIST(%02x%02x): %d\r\n", rx_buffer[6], rx_buffer[5], tmp);
+  // TODO
+  // send_to_host(USART_BEACON);
+  printf2("DIST(%02x%02x): %d\r\n", target[0], rx_buffer[1], tmp);
   // 因为内存和浮点数问题，这个数字就不在单片机上处理了
   // 距离计算方法: tmp / 2 * 1.0 / 499.2e6 / 128.0 * 299702547
 }
 
-void response_poll() {
+void response_poll(uint8 *target) {
   uint8 tx_buffer[] = {0x45, 0x88, 0, 0xCA, 0xDE, 'Y', 'U', 'K', 'I', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   set_src(tx_buffer);
+  tx_buffer[5] = target[0];
+  tx_buffer[6] = target[1];
   dwt_forcetrxoff();
   uint64 poll_rx_ts = get_rx_timestamp_u64();
   uint32 resp_tx_time = (poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
@@ -109,14 +120,14 @@ void instance_rxcallback(const dwt_callback_data_t *rxd) {
         break;
       // data
       case 0x41:
-
+        send_to_host(USART_MSG, (uint8)(rxd->datalength), rx_buffer);
         break;
       // ranging
       case 0x44:
-        response_poll();
+        response_poll(rx_buffer+7);
         break;
       case 0x45:
-        calculate_distance();
+        calculate_distance(rx_buffer+7);
         break;
       default:
         break;
@@ -170,13 +181,58 @@ void resp_msg_set_ts(uint8 *ts_field, const uint64 ts) {
   }
 }
 
+void main_loop(void) {
+  while (1) {
+      if (auto_beacon == 1) {
+        set_src(tx_poll_msg);
+        dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0);
+        dwt_writetxfctrl(sizeof(tx_poll_msg), 0);
+        set_status(STATUS_POLL);
+        dwt_forcetrxoff();
+        dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+      }
+      deca_sleep(RNG_DELAY_MS);
+  }
+}
+
 void usart_handle(void) {
+  uint8 len;
+  uint8 *payload;
   if (usart_status == 2) {
-		if (usart_rx_buffer[0] == 'a') {
-			char str[] = "this is a \n test\r";
-			printf2("%s", str);
-		}
-		printf2("%s\r", usart_rx_buffer);
+    switch (usart_rx_buffer[0]) {
+      case USART_MSG:
+        len = usart_rx_buffer[1];
+        payload = usart_rx_buffer+2;
+        set_src(payload);
+        dwt_writetxdata((uint16)(len), payload, 0);
+        dwt_writetxfctrl((uint16)(len), 0);
+        dwt_forcetrxoff();
+        dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+        break;
+      case USART_BEACON:
+        set_src(tx_poll_msg);
+        dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0);
+        dwt_writetxfctrl(sizeof(tx_poll_msg), 0);
+        set_status(STATUS_POLL);
+        dwt_forcetrxoff();
+        dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+        break;
+      case USART_SETADDR:
+        set_pan((usart_rx_buffer[2]<<8) + usart_rx_buffer[3]);
+        set_mac((usart_rx_buffer[4]<<8) + usart_rx_buffer[5]);
+        break;
+      case USART_RST:
+      case USART_AUTOBEACON:
+        auto_beacon = usart_rx_buffer[2];
+        break;
+      case USART_LOG:
+      case 'a':
+        auto_beacon = 1;
+        break;
+      case 'b':
+        auto_beacon = 0;
+        break;
+    }
 		memset(usart_rx_buffer, 0, USART_BUFFER_LEN);
 		usart_status = 0;
 		usart_index = 0;

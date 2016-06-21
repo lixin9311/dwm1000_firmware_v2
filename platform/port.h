@@ -222,6 +222,7 @@ void TIM4_init(void);
 void reset_DW1000(void);
 void setup_DW1000RSTnIRQ(int enable);
 void int_init(void);
+void send_to_host(char type, char len, char *data);
 
 #ifdef __cplusplus
 }

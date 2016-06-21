@@ -19,6 +19,12 @@
 #define STATUS_IDLE 0
 #define STATUS_POLL 1
 
+#define USART_MSG 0x00
+#define USART_BEACON 0x01
+#define USART_SETADDR 0x02
+#define USART_RST 0x03
+#define USART_AUTOBEACON 0x04
+#define USART_LOG 0x05
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,9 +41,10 @@ void instance_init();
 uint64 get_rx_timestamp_u64(void);
 void resp_msg_get_ts(uint8 *ts_field, uint32 *ts);
 void resp_msg_set_ts(uint8 *ts_field, const uint64 ts);
-void calculate_distance();
-void response_poll();
+void calculate_distance(uint8 *target);
+void response_poll(uint8 *target);
 void usart_handle(void);
+void main_loop(void);
 
 #ifdef __cplusplus
 }
