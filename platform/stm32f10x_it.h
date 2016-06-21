@@ -21,7 +21,7 @@
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __STM32F10x_IT_H
 #define __STM32F10x_IT_H
-
+#define USART_BUFFER_LEN 278
 #ifdef __cplusplus
  extern "C" {
 #endif

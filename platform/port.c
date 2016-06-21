@@ -881,13 +881,23 @@ void USART_putc(char c)
 	while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET)	;
 }
 
+// SLIP like
 void USART_puts(const char *s)
 {
 	int i;
 	for(i=0; s[i]!=0; i++)
 	{
-		USART_putc(s[i]);
+		if (s[i] == 0xDB) {
+			USART_putc(0xDB);
+			USART_putc(0xDC);
+		} else if (s[i] == '\n') {
+			USART_putc(0xDB);
+			USART_putc(0xDD);
+		} else {
+			USART_putc(s[i]);
+		}
 	}
+	USART_putc('\n');
 }
 
 #include <stdio.h>
@@ -965,6 +975,28 @@ static void spi_peripheral_init(void)
     deca_sleep(10);
 }
 
+void TIM4_init(void) {
+	NVIC_InitTypeDef NVIC_InitStructure;
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+	NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4 , ENABLE);
+
+	TIM_DeInit(TIM4);
+
+	TIM_TimeBaseStructure.TIM_Period = 30;
+	TIM_TimeBaseStructure.TIM_Prescaler = 7200; // 72M / 7200 = 10k
+	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
+}
+
 /*! ------------------------------------------------------------------------------------------------------------------
  * @fn peripherals_init()
  *
@@ -983,6 +1015,7 @@ void peripherals_init (void)
 	spi_peripheral_init();
 	// lcd_init();
 	// interrupt_init();
+	TIM4_init();
 }
 
 void int_init(void) {

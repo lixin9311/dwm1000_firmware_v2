@@ -37,6 +37,7 @@ void resp_msg_get_ts(uint8 *ts_field, uint32 *ts);
 void resp_msg_set_ts(uint8 *ts_field, const uint64 ts);
 void calculate_distance();
 void response_poll();
+void usart_handle(void);
 
 #ifdef __cplusplus
 }

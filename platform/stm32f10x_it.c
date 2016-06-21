@@ -24,11 +24,15 @@
 #include "stm32f10x_it.h"
 #include "deca_device_api.h"
 #include "stm32f10x.h"
+#include "deca_types.h"
 #include "port.h"
+#include "instance.h"
 
 /* Tick timer count. */
 volatile unsigned long time32_incr;
-
+uint8 usart_status;
+uint8 usart_rx_buffer[USART_BUFFER_LEN];
+uint16 usart_index;
 void SysTick_Handler(void)
 {
     time32_incr++;
@@ -41,6 +45,41 @@ void EXTI0_IRQHandler(void) {
   }while(GPIO_ReadInputDataBit(DECAIRQ_GPIO, DECAIRQ) == 1);
   EXTI_ClearITPendingBit(DECAIRQ_EXTI);
   // printf2("int out\r\n");
+}
+
+void TIM4_IRQHandler(void) {
+	if (TIM_GetITStatus(TIM4 , TIM_IT_Update) != RESET) {
+		TIM_ClearITPendingBit(TIM4 , TIM_FLAG_Update);
+		usart_status = 2;
+		TIM_ITConfig(TIM4, TIM_IT_Update, DISABLE);
+		TIM_SetCounter(TIM4, 0x0000);
+		TIM_Cmd(TIM4, DISABLE);
+		usart_handle();
+	}
+}
+
+void USART1_IRQHandler(void) {
+	if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
+		if (usart_status == 0) {
+			usart_status = 1;
+
+			TIM_ClearFlag(TIM4, TIM_FLAG_Update);
+			TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
+			TIM_Cmd(TIM4, ENABLE);
+
+			usart_rx_buffer[usart_index++] = USART1->DR;
+		} else if (usart_status == 1) {
+			TIM_ITConfig(TIM4, TIM_IT_Update, DISABLE);
+			TIM_SetCounter(TIM4, 0x0000);
+			TIM_ClearFlag(TIM4, TIM_FLAG_Update);
+			TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
+
+			usart_rx_buffer[usart_index++] = USART1->DR;
+			if (usart_index == USART_BUFFER_LEN) {
+				TIM4_IRQHandler();
+			}
+		}
+	}
 }
 
 /******************* (C) COPYRIGHT 2010 STMicroelectronics *****END OF FILE****/

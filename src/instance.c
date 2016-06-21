@@ -5,6 +5,12 @@
 #include "deca_spi.h"
 #include "deca_types.h"
 #include "port.h"
+#include "stm32f10x_it.h"
+
+extern uint8 usart_status;
+extern uint8 usart_rx_buffer[USART_BUFFER_LEN];
+extern uint16 usart_index;
+uint8 usart_tx_buffer[USART_BUFFER_LEN];
 
 uint8 status = STATUS_IDLE;
 uint8 mac[2];
@@ -54,7 +60,6 @@ int check_addr(uint8 *buf) {
 }
 
 void calculate_distance() {
-  double distance;
   uint32 poll_rx_ts, resp_tx_ts;
   uint64 resp_rx_ts = dwt_readrxtimestamplo32();
   resp_msg_get_ts(&rx_buffer[RESP_MSG_POLL_RX_TS_IDX], &poll_rx_ts);
@@ -163,4 +168,17 @@ void resp_msg_set_ts(uint8 *ts_field, const uint64 ts) {
   for (i = 0; i < RESP_MSG_TS_LEN; i++) {
     ts_field[i] = (ts >> (i * 8)) & 0xFF;
   }
+}
+
+void usart_handle(void) {
+  if (usart_status == 2) {
+		if (usart_rx_buffer[0] == 'a') {
+			char str[] = "this is a \n test\r";
+			printf2("%s", str);
+		}
+		printf2("%s\r", usart_rx_buffer);
+		memset(usart_rx_buffer, 0, USART_BUFFER_LEN);
+		usart_status = 0;
+		usart_index = 0;
+	}
 }
