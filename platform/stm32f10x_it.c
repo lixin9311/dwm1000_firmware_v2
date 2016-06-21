@@ -35,12 +35,12 @@ void SysTick_Handler(void)
 }
 
 void EXTI0_IRQHandler(void) {
-  printf2("int\r\n");
-  EXTI_ClearITPendingBit(DECAIRQ_EXTI);
+  // printf2("int\r\n");
   do{
     dwt_isr();
   }while(GPIO_ReadInputDataBit(DECAIRQ_GPIO, DECAIRQ) == 1);
-  printf2("int out\r\n");
+  EXTI_ClearITPendingBit(DECAIRQ_EXTI);
+  // printf2("int out\r\n");
 }
 
 /******************* (C) COPYRIGHT 2010 STMicroelectronics *****END OF FILE****/
