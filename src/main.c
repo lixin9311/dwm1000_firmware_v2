@@ -4,9 +4,7 @@
 #include "port.h"
 #include "instance.h"
 
-#define TX
-// #define RX
-#define APP_NAME "SS TWR INIT v1.1"
+#define APP_NAME "DW1000 Firmware v2"
 
 /* Default communication configuration. We use here EVK1000's mode 4. See NOTE 1 below. */
 static dwt_config_t config = {
@@ -24,7 +22,7 @@ static dwt_config_t config = {
 
 int main(void) {
   peripherals_init();
-  printf2("%s\r\n",APP_NAME);
+  debugf("%s\r",APP_NAME);
 
   reset_DW1000();
   spi_set_rate_low();
@@ -33,20 +31,13 @@ int main(void) {
 
 
   dwt_configure(&config);
-  #ifdef TX
-    printf2("%s\r\n", "role: TX");
-    set_pan(0xDECA);
-    set_mac(0xFFF1);
-  #endif
-  #ifdef RX
-    printf2("%s\r\n", "role: RX");
-    set_pan(0xDECA);
-    set_mac(0xFFF2);
-  #endif
+  set_pan(0xDECA);
+  set_mac(0xFFF1);
 
   dwt_setrxantennadelay(RX_ANT_DLY);
   dwt_settxantennadelay(TX_ANT_DLY);
   instance_init();
+  dwt_setautorxreenable(1);
   dwt_rxenable(0);
   int_init();
   main_loop();

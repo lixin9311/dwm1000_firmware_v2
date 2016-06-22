@@ -937,6 +937,24 @@ void printf2(const char *format, ...)
 	return;
 }
 
+void debugf(const char *format, ...)
+{
+	va_list list;
+	va_start(list, format);
+
+	int len = vsnprintf(0, 0, format, list);
+	char *s;
+
+	s = (char *)malloc(len + 1);
+	vsprintf(s, format, list);
+
+	send_to_host(0x05, len + 1, s);
+
+	free(s);
+	va_end(list);
+	return;
+}
+
 int is_IRQ_enabled(void)
 {
 	return ((   NVIC->ISER[((uint32_t)(DECAIRQ_EXTI_IRQn) >> 5)]
