@@ -53,13 +53,13 @@ void set_src(uint8 *buf) {
 }
 
 int check_addr(uint8 *buf) {
-  if (memcmp(buf+3, pan, 2) == 0) {
-    if (memcmp(buf+3, bpan, 2) == 0) {
+  if (memcmp(buf+3, pan, 2) != 0) {
+    if (memcmp(buf+3, bpan, 2) != 0) {
       return 0;
     }
   }
-  if (memcmp(buf+5, mac, 2) == 0) {
-    if (memcmp(buf+5, bmac, 2) == 0) {
+  if (memcmp(buf+5, mac, 2) != 0) {
+    if (memcmp(buf+5, bmac, 2) != 0) {
       return 0;
     }
   }
@@ -124,17 +124,20 @@ void instance_rxcallback(const dwt_callback_data_t *rxd) {
       dwt_readrxdata(rx_buffer, rxd->datalength, 0);
     }
     if (check_addr(rx_buffer) == 0) {
-      printf2("%s", "not for me.\r\n");
+      // debugf("%s", "not for me.\r");
+      // debugf("target: %02x%02x%02x%02x, me: %02x%02x%02x%02x\r", rx_buffer[3],rx_buffer[4], rx_buffer[5], rx_buffer[6], pan[0], pan[1], mac[0], mac[1]);
+      dwt_rxenable(0);
       return;
     }
     switch (rxd->fctrl[0]) {
       // beacon
       case 0x40:
-
+    	dwt_rxenable(0);
         break;
       // data
       case 0x41:
         send_to_host(USART_MSG, (uint8)(rxd->datalength), rx_buffer);
+        dwt_rxenable(0);
         break;
       // ranging
       case 0x44:
@@ -142,15 +145,17 @@ void instance_rxcallback(const dwt_callback_data_t *rxd) {
         break;
       case 0x45:
         calculate_distance(rx_buffer+7);
+        dwt_rxenable(0);
         break;
       default:
+    	dwt_rxenable(0);
         break;
     }
 
   } else if (rxd->event == DWT_SIG_RX_TIMEOUT) { // 超时
-
+	  dwt_rxenable(0);
   } else { // 其他错误，清除状态机状态
-
+	  dwt_rxenable(0);
   }
 }
 
