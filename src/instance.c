@@ -102,7 +102,8 @@ void response_poll(uint8 *target) {
   tx_buffer[6] = target[1];
   dwt_forcetrxoff();
   uint64 poll_rx_ts = get_rx_timestamp_u64();
-  uint32 resp_tx_time = (poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8;
+  // 100ms 换算成计数器是0x17CDC00，十进制‭24960000‬，3CF00是1ms，这里随机一下，防止发生帧碰撞
+  uint32 resp_tx_time = ((poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8) + (0x3CF00 * (poll_rx_ts % 10));
   dwt_setdelayedtrxtime(resp_tx_time);
   uint64 resp_tx_ts = (((uint64)(resp_tx_time & 0xFFFFFFFE)) << 8) + TX_ANT_DLY;
   resp_msg_set_ts(&tx_buffer[RESP_MSG_POLL_RX_TS_IDX], poll_rx_ts);
