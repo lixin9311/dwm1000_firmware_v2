@@ -41,4 +41,5 @@ int main(void) {
   dwt_rxenable(0);
   int_init();
   main_loop();
+  return 0;
 }
