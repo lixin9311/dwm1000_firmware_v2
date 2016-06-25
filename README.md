@@ -80,6 +80,7 @@ MSG
     0x03: RESET
     0x04: Auto Beacon
     0x05: Log Msg
+    0x06: BeaconSilent
   2. Packet Length
     Payload长度，以无符号8位整型(unsigned char)表示
   3. Payload
@@ -135,6 +136,20 @@ Payload 格式:
 尚未实现
 
 0x04 Auto Beacon:
+
+Payload 格式:
++------------+
+|   Enable   |
++------------+
+|  1 Bytes   |
++------------+
+|0x00 or 0x01|
++------------+
+
+0x05 Log:
+Payload 为字符串等等.
+
+0x06 BeaconSilent:
 
 Payload 格式:
 +------------+
