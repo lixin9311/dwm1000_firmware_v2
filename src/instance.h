@@ -25,6 +25,7 @@
 #define USART_RST 0x03
 #define USART_AUTOBEACON 0x04
 #define USART_LOG 0x05
+#define USART_KEEPSILENT 0x06
 
 #ifdef __cplusplus
 extern "C" {

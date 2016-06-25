@@ -25,6 +25,7 @@ uint8 pan[2];
 uint8 bmac[2] = {0xFF, 0xFF};
 uint8 bpan[2] = {0xFF, 0xFF};
 uint8 rx_buffer[RX_BUF_LEN];
+uint8 silent = 0;
 // 定位用
 uint32 poll_tx_ts;
 uint32 resp_rx_ts;
@@ -142,6 +143,10 @@ void instance_rxcallback(const dwt_callback_data_t *rxd) {
         break;
       // ranging
       case 0x44:
+        // 可以使用帧过滤
+        if (silent == 1) {
+          break;
+        }
         response_poll(rx_buffer+7);
         break;
       case 0x45:
@@ -206,6 +211,13 @@ void main_loop(void) {
   }
 }
 
+void reset(void) {
+  reset_DW1000();
+  spi_set_rate_low();
+  dwt_initialise(DWT_LOADUCODE);
+  spi_set_rate_high();
+}
+
 void usart_handle(void) {
   uint8 len;
   uint8 *payload;
@@ -233,6 +245,11 @@ void usart_handle(void) {
         set_mac((usart_rx_buffer[5]<<8) + usart_rx_buffer[4]);
         break;
       case USART_RST:
+        reset();
+        break;
+      case USART_KEEPSILENT:
+        silent = usart_rx_buffer[2];
+        break;
       case USART_AUTOBEACON:
         if (usart_rx_buffer[2] == 1) {
           enable_auto_beacon();
