@@ -18,6 +18,12 @@ static uint8 tx_poll_msg[] = {0x44, 0x88, 0, 0xCA, 0xDE, 0xFF, 0xFF, 0xFF, 0xFF,
 
 uint8 usart_tx_buffer[USART_BUFFER_LEN];
 
+uint8 TDOA_status = STATUS_IDLE;
+uint64 TDOA_T1;
+uint64 TDOA_T2;
+uint64 TDOA_T3;
+uint64 TDOA_T4;
+
 uint8 auto_beacon = 0;
 uint8 status = STATUS_IDLE;
 uint8 mac[2];
@@ -67,6 +73,10 @@ int check_addr(uint8 *buf) {
   return 1;
 }
 
+void dump_u64(uint64 i) {
+  debugf("%02x%02x%02x%02x%02x", (uint8)((i>>32)&0xff),(uint8)((i>>24)&0xff),(uint8)((i>>16)&0xff),(uint8)((i>>8)&0xff),(uint8)((i>>0)&0xff));
+}
+
 void beacon(void) {
   set_src(tx_poll_msg);
   dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0);
@@ -77,12 +87,11 @@ void beacon(void) {
 }
 
 void calculate_distance(uint8 *target) {
-  uint32 poll_rx_ts, resp_tx_ts;
-  uint64 resp_rx_ts = dwt_readrxtimestamplo32();
-  resp_msg_get_ts(&rx_buffer[RESP_MSG_POLL_RX_TS_IDX], &poll_rx_ts);
-  resp_msg_get_ts(&rx_buffer[RESP_MSG_RESP_TX_TS_IDX], &resp_tx_ts);
+  uint64 delay;
+  uint32 resp_rx_ts = dwt_readrxtimestamplo32();
+  resp_msg_get_ts(&rx_buffer[RESP_MSG_POLL_DELAY_IDX], &delay, RESP_MSG_TS_LEN);
   int32 rtd_init = resp_rx_ts - poll_tx_ts;
-  int32 rtd_resp = resp_tx_ts - poll_rx_ts;
+  int32 rtd_resp = (int32)delay;
   int32 tmp = (rtd_init - rtd_resp);
   usart_tx_buffer[0] = target[0];
   usart_tx_buffer[1] = target[1];
@@ -97,18 +106,17 @@ void calculate_distance(uint8 *target) {
 }
 
 void response_poll(uint8 *target) {
-  uint8 tx_buffer[] = {0x45, 0x88, 0, 0xCA, 0xDE, 'Y', 'U', 'K', 'I', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  uint8 tx_buffer[] = {0x45, 0x88, 0, 0xCA, 0xDE, 'Y', 'U', 'K', 'I', 0, 0, 0, 0, 0, 0};
   set_src(tx_buffer);
   tx_buffer[5] = target[0];
   tx_buffer[6] = target[1];
   dwt_forcetrxoff();
   uint64 poll_rx_ts = get_rx_timestamp_u64();
   // 100ms 换算成计数器是0x17CDC00，十进制‭24960000‬，3CF00是1ms，这里随机一下，防止发生帧碰撞
-  uint32 resp_tx_time = ((poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8) + (0x3CF00 * (poll_rx_ts % 10));
+  uint32 resp_tx_time = ((poll_rx_ts + (POLL_RX_TO_RESP_TX_DLY_UUS * UUS_TO_DWT_TIME)) >> 8) + (0x3CF00 * (0));
   dwt_setdelayedtrxtime(resp_tx_time);
   uint64 resp_tx_ts = (((uint64)(resp_tx_time & 0xFFFFFFFE)) << 8) + TX_ANT_DLY;
-  resp_msg_set_ts(&tx_buffer[RESP_MSG_POLL_RX_TS_IDX], poll_rx_ts);
-  resp_msg_set_ts(&tx_buffer[RESP_MSG_RESP_TX_TS_IDX], resp_tx_ts);
+  resp_msg_set_ts(&tx_buffer[RESP_MSG_POLL_DELAY_IDX], resp_tx_ts - poll_rx_ts, RESP_MSG_TS_LEN);
   dwt_writetxdata(sizeof(tx_buffer), tx_buffer, 0);
   dwt_writetxfctrl(sizeof(tx_buffer), 0);
   int r = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);
@@ -117,6 +125,55 @@ void response_poll(uint8 *target) {
   } else {
 	  // printf2("r\r\n");
   }
+}
+
+void TDOA_init(uint8 *target) {
+  uint8 tx_buffer[] = {0x46, 0x88, 0, 0xCA, 0xDE, 'Y', 'U', 'K', 'I', 0, 0};
+  set_src(tx_buffer);
+  tx_buffer[5] = 0xff;//target[0];
+  tx_buffer[6] = 0xff;//target[1];
+  dwt_forcetrxoff();
+  dwt_writetxdata(sizeof(tx_buffer), tx_buffer, 0);
+  dwt_writetxfctrl(sizeof(tx_buffer), 0);
+  TDOA_status = TDOA_INIT;
+  int r = dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+  if (r !=  DWT_SUCCESS) {
+    debugf("fi");
+    dwt_rxenable(0);
+  } else {
+    // printf2("r\r\n");
+  }
+}
+
+void TDOA_stage1(uint8 *target) {
+  // 同步指令，记录RX Timestamp，并发送，记录TX timestamp
+  uint8 tx_buffer[] = {0x47, 0x88, 0, 0xCA, 0xDE, 'Y', 'U', 'K', 'I', 0, 0, 0, 0, 0, 0, 0};
+  set_src(tx_buffer);
+  tx_buffer[5] = target[0];
+  tx_buffer[6] = target[1];
+  dwt_forcetrxoff();
+  TDOA_T2 = get_rx_timestamp_u64();
+  resp_msg_set_ts(&tx_buffer[RESP_MSG_POLL_DELAY_IDX], TDOA_T2, 5);
+  dwt_writetxdata(sizeof(tx_buffer), tx_buffer, 0);
+  dwt_writetxfctrl(sizeof(tx_buffer), 0);
+  TDOA_status = TDOA_SEND;
+  int r = dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+  if (r !=  DWT_SUCCESS) {
+    debugf("f1");
+    dwt_rxenable(0);
+  } else {
+    // printf2("r\r\n");
+  }
+}
+
+void TDOA_stage2(uint8 *target) {
+  TDOA_T4 = get_rx_timestamp_u64();
+  resp_msg_get_ts(&rx_buffer[RESP_MSG_POLL_DELAY_IDX], &TDOA_T2, 5);
+  debugf("T2h%02x", rx_buffer[13]);
+  debugf("T1:, T2:, T4:");
+  dump_u64(TDOA_T1);
+  dump_u64(TDOA_T2);
+  dump_u64(TDOA_T4);
 }
 
 void instance_rxcallback(const dwt_callback_data_t *rxd) {
@@ -134,7 +191,7 @@ void instance_rxcallback(const dwt_callback_data_t *rxd) {
     switch (rxd->fctrl[0]) {
       // beacon
       case 0x40:
-    	dwt_rxenable(0);
+        dwt_rxenable(0);
         break;
       // data
       case 0x41:
@@ -145,6 +202,7 @@ void instance_rxcallback(const dwt_callback_data_t *rxd) {
       case 0x44:
         // 可以使用帧过滤
         if (silent == 1) {
+          dwt_rxenable(0);
           break;
         }
         response_poll(rx_buffer+7);
@@ -153,8 +211,17 @@ void instance_rxcallback(const dwt_callback_data_t *rxd) {
         calculate_distance(rx_buffer+7);
         dwt_rxenable(0);
         break;
+      case 0x46:
+        // 同步指令，记录RX Timestamp，并发送，记录TX timestamp
+        TDOA_stage1(rx_buffer+7);
+        break;
+      case 0x47:
+        // 同步返回，记录RX Timestamp
+        TDOA_stage2(rx_buffer+7);
+        dwt_rxenable(0);
+        break;
       default:
-    	dwt_rxenable(0);
+        dwt_rxenable(0);
         break;
     }
 
@@ -170,6 +237,21 @@ void instance_txcallback(const dwt_callback_data_t *txd) {
     if (status == STATUS_POLL) {
       poll_tx_ts = dwt_readtxtimestamplo32();
       status = STATUS_IDLE;
+    }
+    if (TDOA_status == TDOA_INIT) {
+      TDOA_T1 = get_tx_timestamp_u64();
+      debugf("Lo T1:%02x", dwt_readtxtimestamplo32());
+      debugf("Hi T1:%02x", dwt_readtxtimestamphi32());
+      debugf("T1:");
+      dump_u64(TDOA_T1);
+      TDOA_status = STATUS_IDLE;
+    } else if(TDOA_status == TDOA_SEND) {
+      TDOA_T3 = get_tx_timestamp_u64();
+      debugf("Lo T3:%02x", dwt_readtxtimestamplo32());
+      debugf("Hi T3:%02x", dwt_readtxtimestamphi32());
+      debugf("T3:");
+      dump_u64(TDOA_T3);
+      TDOA_status = STATUS_IDLE;
     }
   }
 }
@@ -191,17 +273,29 @@ uint64 get_rx_timestamp_u64(void) {
   return ts;
 }
 
-void resp_msg_get_ts(uint8 *ts_field, uint32 *ts) {
+uint64 get_tx_timestamp_u64(void) {
+  uint8 ts_tab[5];
+  uint64 ts = 0;
+  int i;
+  dwt_readtxtimestamp(ts_tab);
+  for (i = 4; i >= 0; i--) {
+    ts <<= 8;
+    ts |= ts_tab[i];
+  }
+  return ts;
+}
+
+void resp_msg_get_ts(uint8 *ts_field, uint64 *ts, int len) {
   int i;
   *ts = 0;
-  for (i = 0; i < RESP_MSG_TS_LEN; i++) {
-    *ts += ts_field[i] << (i * 8);
+  for (i = 0; i < len; i++) {
+    *ts |= ts_field[i] << (i * 8);
   }
 }
 
-void resp_msg_set_ts(uint8 *ts_field, const uint64 ts) {
+void resp_msg_set_ts(uint8 *ts_field, const uint64 ts, int len) {
   int i;
-  for (i = 0; i < RESP_MSG_TS_LEN; i++) {
+  for (i = 0; i < len; i++) {
     ts_field[i] = (ts >> (i * 8)) & 0xFF;
   }
 }
@@ -259,7 +353,7 @@ void usart_handle(void) {
         break;
       case USART_LOG:
       case 'a':
-        auto_beacon = 1;
+        TDOA_init("ss");
         break;
       case 'b':
         auto_beacon = 0;
