@@ -33,7 +33,7 @@ int main(void) {
   dwt_configure(&config);
   set_pan(0xDECA);
   set_mac(0xFFF1);
-
+  dwt_enableframefilter(DWT_FF_BEACON_EN | DWT_FF_DATA_EN | DWT_FF_ACK_EN | DWT_FF_MAC_EN | DWT_FF_RSVD_EN);
   dwt_setrxantennadelay(RX_ANT_DLY);
   dwt_settxantennadelay(TX_ANT_DLY);
   instance_init();
