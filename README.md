@@ -211,3 +211,4 @@ Frame Control:
 * [ ] 可设置是否回复Beacon测距请求，或者单独回复Beacon，不返回测距信息
 * [ ] RESET 指令
 * [ ] 多样化的设置
+* [ ] 手册Page34 Note

@@ -28,6 +28,8 @@
 #define USART_AUTOBEACON 0x04
 #define USART_LOG 0x05
 #define USART_KEEPSILENT 0x06
+#define USART_CLKSYNC 0x07
+#define USART_TS 0x08
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,6 +52,7 @@ void response_poll(uint8 *target);
 void usart_handle(void);
 void main_loop(void);
 void beacon(void);
+void tdoa_beacon(uint8 id);
 
 #ifdef __cplusplus
 }

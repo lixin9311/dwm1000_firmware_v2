@@ -59,9 +59,15 @@ void TIM4_IRQHandler(void) {
 }
 
 void TIM2_IRQHandler(void) {
+  static uint8 id;
 	if(TIM_GetITStatus(TIM2 , TIM_IT_Update) != RESET) {
     TIM_ClearITPendingBit(TIM2 , TIM_FLAG_Update);
-    beacon();
+    tdoa_beacon(id);
+    if (id == 0xff) {
+      id = 0;
+    } else {
+      id++;
+    }
 	}
 }
 
