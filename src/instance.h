@@ -39,6 +39,7 @@ void set_status(const uint8 s);
 void set_mac(uint16 dmac);
 void set_pan(uint16 dpan);
 void set_src(uint8 *buf);
+void set_dst(uint8 *buf, uint8 *addr);
 int check_addr(uint8 *buf);
 void instance_rxcallback(const dwt_callback_data_t *rxd);
 void instance_txcallback(const dwt_callback_data_t *txd);

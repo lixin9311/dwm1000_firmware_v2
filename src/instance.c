@@ -60,6 +60,11 @@ void set_src(uint8 *buf) {
   buf[8] = mac[1];
 }
 
+void set_dst(uint8 *buf, uint8 *addr) {
+  buf[5] = addr[0];
+  buf[6] = addr[1];
+}
+
 int check_addr(uint8 *buf) {
   if (memcmp(buf+3, pan, 2) != 0) {
     if (memcmp(buf+3, bpan, 2) != 0) {
@@ -362,6 +367,7 @@ void usart_handle(void) {
         break;
       case USART_BEACON:
         set_src(tx_poll_msg);
+        set_dst(tx_poll_msg, &usart_rx_buffer[1]);
         dwt_writetxdata(sizeof(tx_poll_msg), tx_poll_msg, 0);
         dwt_writetxfctrl(sizeof(tx_poll_msg), 0);
         set_status(STATUS_POLL);
